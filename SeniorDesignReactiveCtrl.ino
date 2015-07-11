@@ -19,16 +19,17 @@ int rightMotor = 3;  // Right Motor connected to digital pin 3 for PWM
 int leftMotor = 5;  // Left Motor connected to digital pin 5 for PWM
 
 int forward = 100;  // Speed for moving forward
-int backwards = 240; // Speed for moving backwards
+int backwards = 240; // Speed for moving backward
 
-// Set pins for the bumpers
+// Pins for the bumpers
 int frontLeftBump = 13;
 int frontRightBump = 12;
 int backLeftBump = 11;
 int backRightBump = 10;
 
-// Set pins for the ultrasonic sensors
-int USTrig = 9;
+// Pins for the ultrasonic sensors
+int frontTrig = 4;
+int backTrig = 9;
 int frontUS = 8;
 int backUS = 7;
 
@@ -52,15 +53,22 @@ void setup() {
   pinMode( backUS, INPUT);
 
 // Set Ultrasonic Sensor Trig pins as output
-  pinMode(USTrig, OUTPUT);
+  pinMode(frontTrig, OUTPUT);
+  pinMode(backTrig, OUTPUT);
   
 // Set serial baud rate  
   Serial.begin(9600);
 }
 
-int USRead(int USEcho){
-  long duration, distance;
-  
+// USRead will take the pin for the Ultrasonic Echo, send out a pulse
+// and determine the distance to an obstacle, if there is one.  It will then
+// return 1 if and obstacle has been detected, 0 otherwise
+int USRead(int USEcho, int USTrig){
+// Duration of the pulse 
+  long duration;
+// Distance to an object
+  long distance;
+// Pulse the Ultrasonic Sensor
   digitalWrite(USTrig, LOW);
   delayMicroseconds(2);
   digitalWrite(USTrig, HIGH);
@@ -69,12 +77,45 @@ int USRead(int USEcho){
   duration = pulseIn(USEcho, HIGH);
   distance = (duration/2) / 29.1;  
   
-  if(distance <= 40){
-    Serial.print("Left Front: ");
+ // Determine if an object is detected or not
+  if(distance <= 10){
+ // FOR DEBUGGING: Display distance to object   
+    Serial.print("Distance: ");
     Serial.println(distance);
+    Serial.println("US!!!");
     return 1;
     }
   else return 0;
+}
+
+int bumped(){
+  int bump = 0;
+// Check Front Left Bumper, if there is an obstacle, return 1
+  bump = digitalRead(frontLeftBump);
+  if(bump == 1){
+    Serial.println("BUMP!!");
+    return bump;
+  }
+// Check Front Right Bumper, if there is an obstacle, return 1
+  bump = digitalRead(frontRightBump);
+  if(bump == 1){
+    Serial.println("BUMP!!");
+    return bump;
+  }
+// Check Back Left Bumper, if there is an obstacle, return 1
+  bump = digitalRead(backLeftBump);
+  if(bump == 1){
+    Serial.println("BUMP!!");
+    return bump;
+  }
+// Check Back Right Bumper, if there is an obstacle, return 1
+  bump = digitalRead(backRightBump);
+  if(bump == 1){
+    Serial.println("BUMP!!");
+    return bump;
+  }
+  else return bump;
+    
 }
 
 void loop() {
@@ -93,13 +134,20 @@ void loop() {
       }
     }
 // First Check for long range obstacles with Ultrasonic Sensor
-    obstacle = USRead(frontUS);
+// Check the front Ultrasonic first, if no obstacle, next check the 
+// back Ultrasonic
+    obstacle = USRead(frontUS, frontTrig);
+    if(obstacle == 0)
+      obstacle = USRead(backUS, backTrig);
     
 // If nothing detected with Ultrasonics, check for bumper contact
     if(obstacle == 0){
-      obstacle = digitalRead(frontLeftBump);  
-    }  
+      obstacle = bumped();  
+    }
+// FOR DEBUGGING: Print obstacle state    
     Serial.println(obstacle);
+
+// IF an obstacle is detected, turn off the motors    
     if(obstacle == 1){
       speed = 0;
       analogWrite(rightMotor, speed);
@@ -109,8 +157,5 @@ void loop() {
   
 // Reset Obstacle detection to false  
   obstacle = 0;  
-  
-  
-
 }
 
